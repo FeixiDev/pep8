@@ -7,10 +7,10 @@ import subprocess
 
 class Parserpep8():
     def __init__(self):
-        self.args = self.parserPep8()
-        self.JudgeMethod = []
-        self.JudgeFixOrCheck()
-        self.ExMethod()
+        self.ArgparseInit()
+        self.ParserPep8()
+        # self.JudgeFixOrCheck()
+        # self.ExMethod()
 
     '''
     command:
@@ -20,70 +20,59 @@ class Parserpep8():
     python CodeToPep8.py --fix all
     '''
 
-    def parserPep8(self):
+    def ArgparseInit(self):
         self.parser = argparse.ArgumentParser(
-            prog='myprogram', description='choose funciton')
+            prog='myprogram', description='Choose funciton')
         self.parser.add_argument(
+            '-f',
             '--fix',
             action="store",
-            help='Choose filename or all')
+            dest='fix',
+            help='Please enter a file name or all')
         self.parser.add_argument(
+            '-c',
             '--check',
+            dest='check',
             action="store",
-            help='choose filename or all')
+            help='Please enter a file name or all')
         self.parser.add_argument(
             '-d',
             '--detail',
             dest='detail',
             action='store_true',
-            help='')
-        args = self.parser.parse_args()
-        return vars(args)
+            help='Please choose whether to show details')
 
-    def JudgeFixOrCheck(self):
-        try:
-            if self.args['check']:
-                self.JudgeMethod = ['check', self.args['check']]
-            elif self.args['fix']:
-                self.JudgeMethod = ['fix', self.args['fix']]
-            else:
-                self.parser.print_help()
-            if self.args['detail']:
-                self.JudgeMethod.append(True)
-            else:
-                self.JudgeMethod.append(False)
-        except KeyError:
+    def ParserPep8(self):
+        args = self.parser.parse_args()
+        print('args', args)
+        if args.fix == 'all':
+            self.fix_all_file_pep8(args.detail)
+        elif args.check == 'all':
+            self.check_all_file_pep8(args.detail)
+        elif args.fix:
+            self.fix_file_pep8(args.fix, args.detail)
+        elif args.check:
+            self.check_file_pep8(args.check, args.detail)
+        else:
             self.parser.print_help()
 
-    def ExMethod(self):
-        if self.JudgeMethod[0] == 'check':
-            if self.JudgeMethod[1] == 'all':
-                print('当前正在对此文件夹进行检查')
-                self.check_all_file_pep8(self.JudgeMethod[2])
-            else:
-                print('当前正在对%s文件进行检查' % self.JudgeMethod[1])
-                self.check_file_pep8(self.JudgeMethod[1], self.JudgeMethod[2])
-        elif self.JudgeMethod[0] == 'fix':
-            if self.JudgeMethod[1] == 'all':
-                print('当前正在对此文件夹进行修复')
-                self.fix_all_file_pep8(self.JudgeMethod[2])
-            else:
-                print('当前正在对%s文件进行修复' % self.JudgeMethod[1])
-                self.fix_file_pep8(self.JudgeMethod[1], self.JudgeMethod[2])
-        else:
-            return False
+
 
     def check_file_pep8(self, FileName, JudgeDetail):
         if os.path.isfile(FileName):
+            print('当前正在对%s文件进行检查' % FileName)
             result = subprocess.getoutput('autopep8 -v %s' % FileName)
-            CharCount, IssueCount = result.count(
-                '--->'), result.count('issue(s) to fix')
-            if CharCount <= IssueCount:
-                print('%s 文件有 %s 处不规范问题' % (FileName, CharCount - 1))
-            elif CharCount > IssueCount:
-                print('%s 文件有 %s 处不规范问题' % (FileName, IssueCount))
-            elif IssueCount == 0:
-                print('此文件无不规范的地方')
+            if JudgeDetail:
+                print(result)
+            else:
+                CharCount, IssueCount = result.count(
+                    '--->'), result.count('issue(s) to fix')
+                if CharCount <= IssueCount:
+                    print('%s 文件有 %s 处不规范问题' % (FileName, CharCount - 1))
+                elif CharCount > IssueCount:
+                    print('%s 文件有 %s 处不规范问题' % (FileName, IssueCount))
+                elif IssueCount == 0:
+                    print('此文件无不规范的地方')
         else:
             print('当前文件路径不存在')
 
@@ -101,7 +90,7 @@ class Parserpep8():
 
     def check_all_file_pep8(self, JudgeDetail):
         AllIssueCount = 0
-        print('当前正在对文件进行检查，所需时间根据文件大小与文件夹迭代程度，请耐心等待！')
+        print('当前正在对文件夹进行检查，所需时间根据文件大小与文件夹迭代程度，请耐心等待！')
         for i in self.AllPath():
             result = subprocess.getoutput('autopep8 -v %s' % i)
             CharCount, IssueCount = result.count(
@@ -117,19 +106,6 @@ class Parserpep8():
                 # if IssueCount > 1:
                 #     print('%s 有 %s 处不规范问题' % (i, IssueCount))
         print('此 %s 文件夹共有 %s 处不规范问题' % (os.getcwd(), AllIssueCount))
-
-        # for i in os.listdir(os.getcwd()):
-        #     if i[-3:] == '.py':
-        #         result = subprocess.getoutput('autopep8 -v %s' % i)
-        #         CharCount, IssueCount = result.count(
-        #             '--->'), result.count('issue(s) to fix')
-        #         if CharCount <= IssueCount:
-        #             AllIssueCount = AllIssueCount + CharCount - 1
-        #             print('%s 有 %s 处不规范问题' % (i, CharCount - 1))
-        #         elif CharCount > IssueCount:
-        #             AllIssueCount = AllIssueCount + IssueCount
-        #             print('%s 有 %s 处不规范问题' % (i, IssueCount))
-        # print('此 %s 文件夹共有 %s 处不规范问题' % (os.getcwd(), AllIssueCount))
 
     def fix_file_pep8(self, FileName, JudgeDetail):
         if os.path.isfile(FileName):
@@ -147,6 +123,7 @@ class Parserpep8():
         subprocess.getoutput(
             'autopep8 --in-place --aggressive --aggressive --aggressive -r %s' %
             os.getcwd())
+        print('已对此文件夹所有python文件进行规范！')
 
 
 if __name__ == '__main__':
