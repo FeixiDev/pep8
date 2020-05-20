@@ -3,21 +3,50 @@ import autopep8
 import os
 import argparse
 import subprocess
+from os import listdir
+from os.path import isfile,join
 
 
-class Parserpep8():
+class source(object):
+    def __init__(self):
+        pass
+
+    def check_result(self,FileName):
+        return subprocess.run('autopep8 -v %s' % FileName,shell=True,stdout=subprocess.PIPE)
+
+    def fix_result(self,FileName):
+        return subprocess.run('autopep8 --in-place --aggressive --aggressive --aggressive %s' %
+                FileName,shell=True)
+
+    def fix_all_result(self,DirName):
+        return subprocess.run('autopep8 --in-place --aggressive --aggressive --aggressive %s' %
+                DirName,shell=True)
+
+    def list_all_files(self,file_path):
+        return [f for f in listdir(file_path) if isfile(join(file_path, f))]
+
+    def list_all(self, file_path):
+        return listdir(file_path)
+
+    def all_pyfile(self):
+        result=[]
+        for maindir, subdir, file_name_list in os.walk(os.getcwd()):
+            result.extend([os.path.join(maindir, filename) for filename in file_name_list])
+        return  [i for i in result  if i[-3:] == '.py']
+
+    def dir_all_pyfile(self,file_path):
+        return [i for i in self.list_all_files(file_path) if i[-3:] == '.py']
+
+
+class Parserpep8(source):
     def __init__(self):
         self.ArgparseInit()
         self.ParserPep8()
-        # self.JudgeFixOrCheck()
-        # self.ExMethod()
 
     '''
     command:
-    python CodeToPep8.py --check filename
-    python CodeToPep8.py --check all
-    python CodeToPep8.py --fix filename
-    python CodeToPep8.py --fix all
+    python CodeToPep8.py -c/--check filename/dir/.
+    python CodeToPep8.py -f/--fix filename/dir/.
     '''
 
     def ArgparseInit(self):
@@ -28,35 +57,60 @@ class Parserpep8():
             '--fix',
             action="store",
             dest='fix',
-            help='Please enter a file name or all')
+            help='Please enter filename/dir/.')
         self.parser.add_argument(
             '-c',
             '--check',
             dest='check',
             action="store",
-            help='Please enter a file name or all')
-        self.parser.add_argument(
-            '-d',
-            '--detail',
-            dest='detail',
-            action='store_true',
-            help='Please choose whether to show details')
+            help='Please enter filename/dir/.')
 
     def ParserPep8(self):
         args = self.parser.parse_args()
-        print('args', args)
-        if args.fix == 'all':
-            self.fix_all_file_pep8(args.detail)
-        elif args.check == 'all':
-            self.check_all_file_pep8(args.detail)
-        elif args.fix:
-            self.fix_file_pep8(args.fix, args.detail)
+        if args.fix:
+            self.fix_pep8(args.fix)
         elif args.check:
-            self.check_file_pep8(args.check, args.detail)
+            self.check_pep8(args.check)
         else:
             self.parser.print_help()
 
+    def check_pep8(self, FileName):
+        #check more file or dir
+        for str_file_name in FileName.split(','):
+            #check project all python file
+            if str_file_name=='.':
+                for i in self.all_pyfile():
+                    self.check_result(i)
+                break
+            # check a python file
+            elif os.path.isfile(str_file_name):
+                self.check_result(str_file_name)
+            #check a dir
+            elif os.path.isdir(str_file_name):
+                for dir_file_name in self.dir_all_pyfile(str_file_name):
+                    self.check_result(join(str_file_name, dir_file_name))
+            else:
+                print('当前文件路径不存在')
 
+    def fix_pep8(self, FileName):
+        for str_file_name in FileName.split(','):
+            if str_file_name=='.':
+                print('当前正在对文件夹进行修复，所需时间根据文件大小与文件夹迭代程度，请耐心等待！')
+                self.fix_all_result(os.getcwd())
+                print('SUCCESS')
+                break
+            elif os.path.isfile(str_file_name):
+                print('当前正在对 %s 文件进行修复' % str_file_name)
+                self.fix_result(str_file_name)
+                print('SUCCESS')
+            elif os.path.isdir(str_file_name):
+                print('当前正在对 %s 文件夹进行修复' % str_file_name)
+                self.fix_all_result(str_file_name)
+                print('SUCCESS')
+            else:
+                print('文件路径不存在')
+
+#####################################################
 
     def check_file_pep8(self, FileName, JudgeDetail):
         if os.path.isfile(FileName):
@@ -76,17 +130,6 @@ class Parserpep8():
         else:
             print('当前文件路径不存在')
 
-    def AllPath(self):
-        result = []
-        LisPath = []
-        for maindir, subdir, file_name_list in os.walk(os.getcwd()):
-            for filename in file_name_list:
-                apath = os.path.join(maindir, filename)
-                result.append(apath)
-        for i in result:
-            if i[-3:] == '.py':
-                LisPath.append(i)
-        return LisPath
 
     def check_all_file_pep8(self, JudgeDetail):
         AllIssueCount = 0
@@ -98,13 +141,9 @@ class Parserpep8():
             if CharCount <= IssueCount:
                 AllIssueCount = AllIssueCount + CharCount - 1
                 print('%s 有 %s 处不规范问题' % (i, CharCount - 1))
-                # if CharCount > 2:
-                #     print('%s 有 %s 处不规范问题' % (i, CharCount - 1))
             elif CharCount > IssueCount:
                 AllIssueCount = AllIssueCount + IssueCount
                 print('%s 有 %s 处不规范问题' % (i, IssueCount))
-                # if IssueCount > 1:
-                #     print('%s 有 %s 处不规范问题' % (i, IssueCount))
         print('此 %s 文件夹共有 %s 处不规范问题' % (os.getcwd(), AllIssueCount))
 
     def fix_file_pep8(self, FileName, JudgeDetail):
@@ -128,19 +167,5 @@ class Parserpep8():
 
 if __name__ == '__main__':
     Parserpep8()
-
-# class Optionst(object):
-#     def __init__(self):
-#         self.in_place = True
-#         self.pep8_passes = -1
-#         self.jobs = 0
-#         self.ignore = []
-#         self.diff = None
-#         self.aggressive = 2
-#         self.max_line_length = 79
-#
-#
-# options = Optionst()
-# file = ("case.py")
-#
-# autopep8.fix_file(file, options)
+    # a=source()
+    # print(a.all_pyfile())
